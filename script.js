@@ -58,26 +58,74 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // 拍照上传处理
-    photoInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
+    photoInput.addEventListener('change', async function(e) {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
         
-        // 检查是否为图片
-        if (!file.type.startsWith('image/')) {
-            alert('请上传图片文件');
-            photoInput.value = '';
-            return;
+        // 清空预览区域
+        photoPreview.innerHTML = '';
+        let allOcrText = '';
+        
+        // 处理每个文件
+        for (const file of files) {
+            // 检查是否为图片
+            if (!file.type.startsWith('image/')) {
+                alert('请只上传图片文件');
+                continue;
+            }
+            
+            try {
+                // 显示图片预览
+                const previewUrl = await readFileAsDataURL(file);
+                const imgElement = document.createElement('div');
+                imgElement.innerHTML = `<img src="${previewUrl}" alt="预览图片">`;
+                photoPreview.appendChild(imgElement);
+                
+                // 调用OCR API处理图片
+                const ocrResult = await processOCR(file);
+                allOcrText += ocrResult + '\n\n';
+            } catch (error) {
+                console.error('处理图片时出错:', error);
+                alert(`处理图片 ${file.name} 时出错`);
+            }
         }
         
-        // 显示图片预览
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            photoPreview.innerHTML = `<img src="${e.target.result}" alt="预览图片">`;
-            // 这里应该有OCR处理，但简化版本中我们假设已经提取了文本
-            // 实际应用中需要调用OCR API
-            alert('图片上传成功！在实际应用中，这里会调用OCR API提取文本。');
-        };
-        reader.readAsDataURL(file);
+        // 显示OCR结果
+        if (allOcrText) {
+            document.getElementById('ocr-result').classList.remove('hidden');
+            document.getElementById('ocr-text').value = allOcrText.trim();
+        }
+    });
+    
+    // 确认使用OCR结果
+    document.getElementById('confirm-ocr').addEventListener('click', function() {
+        const ocrText = document.getElementById('ocr-text').value;
+        if (ocrText) {
+            essayText.value = ocrText;
+            // 切换到文本输入标签页
+            document.querySelector('[data-tab="text"]').click();
+        }
+    });
+    
+    // 文件读取为DataURL
+    function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = e => reject(e);
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // OCR处理函数
+    async function processOCR(file) {
+        // 这里应该调用实际的OCR API
+        // 示例中使用模拟数据
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve(`这是图片 ${file.name} 的OCR识别结果示例。\n实际应用中这里将返回真实的文字识别内容。`);
+            }, 1000);
+        });
     });
     
     // 分析按钮点击事件

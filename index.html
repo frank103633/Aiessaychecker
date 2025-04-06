@@ -39,9 +39,14 @@
                 
                 <div id="photo" class="tab-pane">
                     <div class="photo-upload">
-                        <input type="file" id="photo-input" accept="image/*" capture="camera">
-                        <label for="photo-input">拍照或选择图片</label>
-                        <div id="photo-preview" class="preview-container"></div>
+                        <input type="file" id="photo-input" accept="image/*" capture="camera" multiple>
+                        <label for="photo-input">拍照或选择多张图片</label>
+                        <div id="photo-preview" class="preview-container grid-preview"></div>
+                        <div id="ocr-result" class="ocr-result hidden">
+                            <h3>OCR识别结果</h3>
+                            <textarea id="ocr-text" placeholder="OCR识别结果将显示在这里..." readonly></textarea>
+                            <button id="confirm-ocr" class="secondary-btn">确认使用识别结果</button>
+                        </div>
                     </div>
                 </div>
             </div>
