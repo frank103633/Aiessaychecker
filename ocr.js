@@ -115,11 +115,14 @@ export async function performOCR(imageBuffer) {
         const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
         
         try {
+            console.log('准备发送OCR请求...');
+            
             // 发送OCR请求
             const response = await fetch(`${OCR_API_URL}?access_token=${accessToken}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
                 },
                 body: `image=${encodeURIComponent(base64Image)}&language_type=CHN_ENG&detect_direction=true`,
                 signal: controller.signal
@@ -127,11 +130,14 @@ export async function performOCR(imageBuffer) {
             
             clearTimeout(timeoutId); // 清除超时
             
+            console.log('OCR请求响应状态:', response.status, response.statusText);
+            console.log('OCR响应头:', JSON.stringify([...response.headers.entries()]));
+            
             // 检查响应状态
             if (!response.ok) {
                 console.error('OCR请求失败状态码:', response.status);
                 const responseText = await response.text();
-                console.error('OCR错误响应内容:', responseText.substring(0, 200) + '...');
+                console.error('OCR错误响应内容:', responseText.substring(0, 500));
                 throw new Error(`OCR请求失败: ${response.statusText}`);
             }
             
@@ -139,9 +145,18 @@ export async function performOCR(imageBuffer) {
             let responseText;
             try {
                 responseText = await response.text();
+                console.log('OCR响应内容前100个字符:', responseText.substring(0, 100));
+                
+                // 检查响应是否为HTML
+                if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+                    console.error('收到HTML响应而非JSON:', responseText.substring(0, 500));
+                    throw new Error('服务器返回了HTML而不是JSON，可能是网络问题或服务不可用');
+                }
+                
                 const result = JSON.parse(responseText);
                 
                 if (result.error_code) {
+                    console.error('百度OCR返回错误:', result.error_code, result.error_msg);
                     throw new Error(`百度OCR错误: ${result.error_msg}`);
                 }
                 
@@ -150,7 +165,7 @@ export async function performOCR(imageBuffer) {
                 return textArray.join('\n');
             } catch (jsonError) {
                 console.error('JSON解析错误:', jsonError);
-                console.error('原始响应内容:', responseText ? responseText.substring(0, 200) + '...' : '无响应内容');
+                console.error('原始响应内容:', responseText ? responseText.substring(0, 500) : '无响应内容');
                 throw new Error('OCR响应解析失败: ' + jsonError.message);
             }
         } catch (fetchError) {
