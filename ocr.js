@@ -5,8 +5,8 @@ import sharp from 'sharp';
 // 百度OCR API配置
 const BAIDU_OCR_API_KEY = 'CdFEv5cJRn2QgOyLjpl93W2M'; 
 const BAIDU_OCR_SECRET_KEY = 'N65tO0jSFSN8bYXUAXen0CJugySJVlpZ'; 
-// 改用高精度版本API，可能对手机拍照效果更好
-const OCR_API_URL = 'https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic';
+// 改回使用通用文字识别接口
+const OCR_API_URL = 'https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic';
 
 // 最大文件大小限制（4MB）
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
