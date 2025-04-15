@@ -194,3 +194,4 @@ export async function processMultipleImages(imageBuffers) {
         console.error('批量OCR处理失败:', error);
         throw new Error('批量OCR处理失败: ' + error.message);
     }
+} // 确保这个闭合大括号存在
