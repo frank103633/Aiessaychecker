@@ -101,30 +101,47 @@ async function compressImage(imageBuffer) {
 // 执行OCR识别
 export async function performOCR(imageBuffer) {
     try {
+        // 检查图片格式，记录更多信息
+        try {
+            const image = sharp(imageBuffer);
+            const metadata = await image.metadata();
+            console.log('图片信息:', {
+                format: metadata.format,
+                width: metadata.width,
+                height: metadata.height,
+                size: `${(imageBuffer.length / 1024 / 1024).toFixed(2)}MB`
+            });
+        } catch (metadataError) {
+            console.error('获取图片元数据失败:', metadataError);
+        }
+
         // 压缩图片
         const compressedImageBuffer = await compressImage(imageBuffer);
         
         // 获取access_token
         const accessToken = await getAccessToken();
+        console.log('成功获取access_token');
         
         // 准备图片数据
         const base64Image = compressedImageBuffer.toString('base64');
+        console.log(`准备发送的图片大小: ${(base64Image.length / 1024 / 1024).toFixed(2)}MB`);
         
         // 设置请求超时
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 增加超时时间到60秒
         
         try {
             console.log('准备发送OCR请求...');
             
-            // 发送OCR请求
+            // 发送OCR请求 - 使用更简单的参数
             const response = await fetch(`${OCR_API_URL}?access_token=${accessToken}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'Accept': 'application/json'
                 },
-                body: `image=${encodeURIComponent(base64Image)}&language_type=CHN_ENG&detect_direction=true`,
+                // 简化请求参数，只保留必要的
+                body: `image=${encodeURIComponent(base64Image)}`,
                 signal: controller.signal
             });
             
@@ -195,4 +212,3 @@ export async function processMultipleImages(imageBuffers) {
         console.error('批量OCR处理失败:', error);
         throw new Error('批量OCR处理失败: ' + error.message);
     }
-}

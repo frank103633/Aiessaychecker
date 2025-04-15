@@ -13,20 +13,21 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-// 配置文件上传
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 限制5MB
-    files: 10 // 最多10个文件
-  },
-  fileFilter: (req, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) {
-      cb(new Error('只能上传图片文件'));
-      return;
+// 配置multer存储
+const storage = multer.memoryStorage();
+const upload = multer({ 
+    storage: storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 增加到10MB，给压缩留出空间
+    },
+    fileFilter: (req, file, cb) => {
+        // 接受更多图片格式
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('只允许上传图片文件'));
+        }
     }
-    cb(null, true);
-  }
 });
 
 const client = new OpenAI({
@@ -103,5 +104,5 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`服务器运行在 http://localhost:${PORT}`);
 });
