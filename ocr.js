@@ -3,9 +3,10 @@ import fetch from 'node-fetch';
 import sharp from 'sharp';
 
 // 百度OCR API配置
-const BAIDU_OCR_API_KEY = 'CdFEv5cJRn2QgOyLjpl93W2M'; // 需要替换为实际的API Key
-const BAIDU_OCR_SECRET_KEY = 'N65tO0jSFSN8bYXUAXen0CJugySJVlpZ'; // 需要替换为实际的Secret Key
-const OCR_API_URL = 'https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic';
+const BAIDU_OCR_API_KEY = 'CdFEv5cJRn2QgOyLjpl93W2M'; 
+const BAIDU_OCR_SECRET_KEY = 'N65tO0jSFSN8bYXUAXen0CJugySJVlpZ'; 
+// 改用高精度版本API，可能对手机拍照效果更好
+const OCR_API_URL = 'https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic';
 
 // 最大文件大小限制（4MB）
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
@@ -109,28 +110,56 @@ export async function performOCR(imageBuffer) {
         // 准备图片数据
         const base64Image = compressedImageBuffer.toString('base64');
         
-        // 发送OCR请求
-        const response = await fetch(`${OCR_API_URL}?access_token=${accessToken}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: `image=${encodeURIComponent(base64Image)}&language_type=CHN_ENG`
-        });
+        // 设置请求超时
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
         
-        if (!response.ok) {
-            throw new Error(`OCR请求失败: ${response.statusText}`);
+        try {
+            // 发送OCR请求
+            const response = await fetch(`${OCR_API_URL}?access_token=${accessToken}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `image=${encodeURIComponent(base64Image)}&language_type=CHN_ENG&detect_direction=true`,
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId); // 清除超时
+            
+            // 检查响应状态
+            if (!response.ok) {
+                console.error('OCR请求失败状态码:', response.status);
+                const responseText = await response.text();
+                console.error('OCR错误响应内容:', responseText.substring(0, 200) + '...');
+                throw new Error(`OCR请求失败: ${response.statusText}`);
+            }
+            
+            // 尝试解析JSON响应
+            let responseText;
+            try {
+                responseText = await response.text();
+                const result = JSON.parse(responseText);
+                
+                if (result.error_code) {
+                    throw new Error(`百度OCR错误: ${result.error_msg}`);
+                }
+                
+                // 提取识别的文字
+                const textArray = result.words_result.map(item => item.words);
+                return textArray.join('\n');
+            } catch (jsonError) {
+                console.error('JSON解析错误:', jsonError);
+                console.error('原始响应内容:', responseText ? responseText.substring(0, 200) + '...' : '无响应内容');
+                throw new Error('OCR响应解析失败: ' + jsonError.message);
+            }
+        } catch (fetchError) {
+            clearTimeout(timeoutId); // 确保清除超时
+            if (fetchError.name === 'AbortError') {
+                throw new Error('OCR请求超时');
+            }
+            throw fetchError;
         }
-        
-        const result = await response.json();
-        
-        if (result.error_code) {
-            throw new Error(`百度OCR错误: ${result.error_msg}`);
-        }
-        
-        // 提取识别的文字
-        const textArray = result.words_result.map(item => item.words);
-        return textArray.join('\n');
     } catch (error) {
         console.error('OCR处理失败:', error);
         throw new Error('OCR处理失败: ' + error.message);
